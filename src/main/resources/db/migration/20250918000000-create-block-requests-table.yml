@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-block-requests-table
+      author: system
+      changes:
+        - createTable:
+            tableName: block_requests
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: processed_at
+                  type: timestamp
+              - column:
+                  name: processed_by
+                  type: bigint
+              - column:
+                  name: reason
+                  type: text
+        - addForeignKeyConstraint:
+            baseTableName: block_requests
+            baseColumnNames: card_id
+            referencedTableName: cards
+            referencedColumnNames: id
+            constraintName: fk_block_requests_card
+        - addForeignKeyConstraint:
+            baseTableName: block_requests
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_block_requests_user
+        - addForeignKeyConstraint:
+            baseTableName: block_requests
+            baseColumnNames: processed_by
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_block_requests_processed_by
