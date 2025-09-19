@@ -6,6 +6,7 @@ com\example\bankcards\exception\InvalidCardDataException.class
 com\example\bankcards\controller\UserController.class
 com\example\bankcards\dto\CardRequestDTO$CardRequestDTOBuilder.class
 com\example\bankcards\entity\BlockRequest.class
+com\example\bankcards\config\OpenApiConfig.class
 com\example\bankcards\mapper\CardMapper.class
 com\example\bankcards\controller\CardController.class
 com\example\bankcards\service\impl\UserServiceImpl.class
@@ -17,6 +18,7 @@ com\example\bankcards\dto\LoginRequest.class
 com\example\bankcards\entity\User.class
 com\example\bankcards\dto\UserCreateDTO$UserCreateDTOBuilder.class
 com\example\bankcards\repository\CardRepository.class
+com\example\bankcards\service\impl\UserDetailsServiceImpl.class
 com\example\bankcards\service\UserService.class
 com\example\bankcards\controller\AuthController.class
 com\example\bankcards\exception\NotFoundException.class
@@ -28,6 +30,7 @@ com\example\bankcards\repository\UserRepository.class
 com\example\bankcards\service\impl\CardServiceImpl.class
 com\example\bankcards\util\EncryptionUtil.class
 com\example\bankcards\exception\EncryptionException.class
+com\example\bankcards\security\JwtUtil.class
 com\example\bankcards\service\AuthService.class
 com\example\bankcards\dto\UserUpdateDTO$UserUpdateDTOBuilder.class
 com\example\bankcards\exception\ValidationException.class
@@ -42,9 +45,11 @@ com\example\bankcards\dto\CardDTO.class
 com\example\bankcards\service\BlockRequestService.class
 com\example\bankcards\mapper\CardRequestMapper.class
 com\example\bankcards\mapper\BlockRequestMapper.class
+com\example\bankcards\dto\AuthResponse.class
 com\example\bankcards\dto\LoginRequest$LoginRequestBuilder.class
 com\example\bankcards\dto\UserDTO.class
 com\example\bankcards\entity\BlockRequestStatus.class
+com\example\bankcards\security\JwtFilter.class
 com\example\bankcards\mapper\BlockRequestMapperImpl.class
 com\example\bankcards\exception\GlobalExceptionHandler.class
 com\example\bankcards\dto\BlockRequestDTO.class

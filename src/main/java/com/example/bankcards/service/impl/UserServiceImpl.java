@@ -14,6 +14,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.dao.DataAccessException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,14 +37,44 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO getUserById(Long id) {
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        // Администратор может получать любого пользователя
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + id));
+
+        // Если не администратор, можно получать только информацию о себе
+        if (!isAdmin) {
+            String currentUsername = authentication.getName();
+            if (!user.getUsername().equals(currentUsername)) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
 
         return userMapper.toUserDTO(user);
     }
 
     @Override
     public List<UserDTO> getAllUsers() {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        // Только администратор может получать всех пользователей
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            throw new AccessDeniedException("Admin access required");
+        }
 
         List<User> users = userRepository.findAll();
         return userMapper.toUserDTOList(users);
@@ -50,6 +83,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserDTO createUser(UserCreateDTO userCreateDTO) {
+
+        checkAdminAccess();
+
         if (userRepository.existsByUsername(userCreateDTO.getUsername())) {
             throw new RuntimeException("Пользователь с таким именем уже существует");
         }
@@ -69,6 +105,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserDTO updateUser(Long id, UserUpdateDTO userUpdateDTO) {
+
+        checkAdminAccess();
 
         try {
             User user = userRepository.findById(id)
@@ -98,6 +136,8 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteUser(Long id) {
 
+        checkAdminAccess();
+
         if (!userRepository.existsById(id)) {
             throw new UsernameNotFoundException("User not found with id: " + id);
         }
@@ -119,6 +159,21 @@ public class UserServiceImpl implements UserService {
         // Явная проверка допустимых значений роли
         if (role != Role.USER && role != Role.ADMIN) {
             throw new ValidationException("Неверная роль: " + role + ". Допустимые значения: USER, ADMIN");
+        }
+    }
+
+    // Добавьте этот метод для проверки прав администратора
+    private void checkAdminAccess() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            throw new AccessDeniedException("Admin access required");
         }
     }
 

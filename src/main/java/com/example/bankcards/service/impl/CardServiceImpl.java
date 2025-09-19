@@ -23,6 +23,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -58,20 +60,30 @@ public class CardServiceImpl implements CardService {
     @Override
     @Transactional
     public void transferBetweenOwnCards(Long fromCardId, Long toCardId, BigDecimal amount) {
-
         Card fromCard = cardRepository.findById(fromCardId)
                 .orElseThrow(() -> new NotFoundException("Карта отправителя не найдена с id: " + fromCardId));
-
-        User currentUser = fromCard.getUser();
 
         Card toCard = cardRepository.findById(toCardId)
                 .orElseThrow(() -> new NotFoundException("Карта получателя не найдена с id: " + toCardId));
 
-        if (!fromCard.getUser().getId().equals(toCard.getUser().getId()) ||
+        // Получаем текущего аутентифицированного пользователя
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!(principal instanceof UserDetails)) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        UserDetails userDetails = (UserDetails) principal;
+        String currentUsername = userDetails.getUsername();
+        User currentUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Проверяем, что обе карты принадлежат текущему пользователю
+        if (!fromCard.getUser().getId().equals(currentUser.getId()) ||
                 !toCard.getUser().getId().equals(currentUser.getId())) {
             throw new AccessDeniedException("Вы можете переводить только между своими картами");
         }
 
+        // Остальная логика без изменений
         if (fromCard.getStatus() != CardStatus.ACTIVE || toCard.getStatus() != CardStatus.ACTIVE) {
             throw new ValidationException("Обе карты должны быть активны для перевода");
         }
@@ -87,7 +99,6 @@ public class CardServiceImpl implements CardService {
 
         cardRepository.save(fromCard);
         cardRepository.save(toCard);
-
     }
 
     @Override
@@ -122,7 +133,7 @@ public class CardServiceImpl implements CardService {
     @Transactional
     public CardDTO createCard(CardRequestDTO cardRequestDTO) {
 
-        //checkAdminAccess();
+        checkAdminAccess();
 
         // Валидация номера карты
         validationUtil.validateCardNumber(cardRequestDTO.getNumber());
@@ -210,43 +221,74 @@ public class CardServiceImpl implements CardService {
         return dto;
     }
 
-    private void checkUserAccess(Long userId) {
-        /*String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!currentUser.getRole().name().equals("ADMIN") && !currentUser.getId().equals(userId)) {
-            throw new AccessDeniedException("Access denied");
-        }
-         */
-        return;
-    }
-
     private void checkCardAccess(Card card) {
-       /* String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        if (!currentUser.getRole().name().equals("ADMIN") && !card.getUser().getId().equals(currentUser.getId())) {
+        if (!(principal instanceof UserDetails)) {
             throw new AccessDeniedException("Access denied");
         }
 
-        */
+        UserDetails userDetails = (UserDetails) principal;
 
-        return;
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            String currentUsername = userDetails.getUsername();
+            User currentUser = userRepository.findByUsername(currentUsername)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (!card.getUser().getId().equals(currentUser.getId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
     }
 
-    private void checkAdminAccess() {
-        /*String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    /**
+     * Проверяет доступ пользователя к данным другого пользователя
+     * Администратор имеет доступ ко всем данным
+     * Обычный пользователь - только к своим данным
+     */
+    private void checkUserAccess(Long userId) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        if (!currentUser.getRole().name().equals("ADMIN")) {
+        if (!(principal instanceof UserDetails)) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        UserDetails userDetails = (UserDetails) principal;
+
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            String currentUsername = userDetails.getUsername();
+            User currentUser = userRepository.findByUsername(currentUsername)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (!userId.equals(currentUser.getId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
+    }
+
+    /**
+     * Проверяет, является ли пользователь администратором
+     */
+    private void checkAdminAccess() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (!(principal instanceof UserDetails)) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        UserDetails userDetails = (UserDetails) principal;
+
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
             throw new AccessDeniedException("Admin access required");
         }
-
-         */
-
-        return;
     }
 }
