@@ -20,8 +20,6 @@ public class EncryptionUtil {
     @Value("${encryption.secret-key}")
     String secretKey;
 
-    // final поля должны быть инициализированы сразу или в конструкторе
-    // ALGORITHM объявляем как static final, так как это константа
     static final String ALGORITHM = "AES/ECB/PKCS5Padding"; // AES - стандартный и надежный алгоритм шифрования, одобренный для государственных и финансовых систем.
 
     public String encrypt(String data) {

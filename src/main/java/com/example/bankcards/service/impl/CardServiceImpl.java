@@ -43,14 +43,6 @@ public class CardServiceImpl implements CardService {
     final ValidationUtil validationUtil;
 
     @Override
-    public List<CardDTO> getUserCards(Long userId) {
-        checkUserAccess(userId);
-        return cardRepository.findAllByUserId(userId).stream()
-                .map(this::convertToDto)
-                .toList();
-    }
-
-    @Override
     public Page<CardDTO> getUserCards(Long userId, Pageable pageable) {
         checkUserAccess(userId);
         return cardRepository.findAllByUserId(userId, pageable)
@@ -59,31 +51,18 @@ public class CardServiceImpl implements CardService {
 
     @Override
     @Transactional
-    public void transferBetweenOwnCards(Long fromCardId, Long toCardId, BigDecimal amount) {
+    public void transferBetweenOwnCards(Long userId, Long fromCardId, Long toCardId, BigDecimal amount) {
         Card fromCard = cardRepository.findById(fromCardId)
                 .orElseThrow(() -> new NotFoundException("Карта отправителя не найдена с id: " + fromCardId));
 
         Card toCard = cardRepository.findById(toCardId)
                 .orElseThrow(() -> new NotFoundException("Карта получателя не найдена с id: " + toCardId));
 
-        // Получаем текущего аутентифицированного пользователя
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (!(principal instanceof UserDetails)) {
-            throw new AccessDeniedException("Access denied");
-        }
-
-        UserDetails userDetails = (UserDetails) principal;
-        String currentUsername = userDetails.getUsername();
-        User currentUser = userRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Проверяем, что обе карты принадлежат текущему пользователю
-        if (!fromCard.getUser().getId().equals(currentUser.getId()) ||
-                !toCard.getUser().getId().equals(currentUser.getId())) {
+        if (!fromCard.getUser().getId().equals(userId) ||
+                !toCard.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("Вы можете переводить только между своими картами");
         }
 
-        // Остальная логика без изменений
         if (fromCard.getStatus() != CardStatus.ACTIVE || toCard.getStatus() != CardStatus.ACTIVE) {
             throw new ValidationException("Обе карты должны быть активны для перевода");
         }
@@ -102,11 +81,14 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public BigDecimal getCardBalance(Long cardId) {
+    public BigDecimal getCardBalance(Long userId, Long cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new NotFoundException("Card not found"));
 
-        checkCardAccess(card);
+        if (!card.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("Можно просматривать баланс только своих карт");
+        }
+
         return card.getBalance();
     }
 
@@ -138,14 +120,12 @@ public class CardServiceImpl implements CardService {
         // Валидация номера карты
         validationUtil.validateCardNumber(cardRequestDTO.getNumber());
 
-        // Проверка существования пользователя
         User user = userRepository.findById(cardRequestDTO.getUserId())
                 .orElseThrow(() -> new NotFoundException("Пользователь не найден с id: " + cardRequestDTO.getUserId()));
 
         // Проверка срока действия карты
         validationUtil.validateExpirationDate(cardRequestDTO.getExpirationDate());
 
-        // Создание карты
         Card card = cardRequestMapper.toEntity(cardRequestDTO);
 
         card.setEncryptedNumber(encryptionUtil.encrypt(cardRequestDTO.getNumber()));
@@ -211,7 +191,6 @@ public class CardServiceImpl implements CardService {
      * Комбинированный подход: MapStruct для простых полей + ручная обработка для сложных
      */
     private CardDTO convertToDto(Card card) {
-        // Автоматический маппинг простых полей
         CardDTO dto = cardMapper.toCardDTO(card);
 
         // Ручная обработка номера карты: дешифровка + маскирование

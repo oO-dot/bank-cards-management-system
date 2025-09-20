@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @Hidden // Нужна чтобы Swagger 500 не выкидывал при переходе по ссылке
-    public class GlobalExceptionHandler {
+public class GlobalExceptionHandler {
 
     @ExceptionHandler(EncryptionException.class)
     public ResponseEntity<Object> handleEncryptionException(EncryptionException ex) {
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         body.put("error", "Encryption Error");
-        body.put("message",  ex.getMessage());
+        body.put("message", ex.getMessage());
 
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Invalid Card Data");
-        body.put("message",  ex.getMessage());
+        body.put("message", ex.getMessage());
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Validation Error");
-        body.put("message",  ex.getMessage());
+        body.put("message", ex.getMessage());
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }

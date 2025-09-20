@@ -15,15 +15,14 @@ import java.time.LocalDate;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ValidationUtil {
 
-    // Константы для валидации номеров карт
     static final int MIN_CARD_LENGTH = 13;
     static final int MAX_CARD_LENGTH = 19;
 
-    // Делаем лимиты настраиваемыми через конфигурацию
-    @Value("${validation.max-transfer-amount:100000000}") // 100 млн по умолчанию
+    // Делаем лимиты настраиваемые через конфигурацию
+    @Value("${validation.max-transfer-amount:100000000}")
     BigDecimal maxTransferAmount;
 
-    @Value("${validation.max-balance:1000000000}") // 1 млрд по умолчанию
+    @Value("${validation.max-balance:1000000000}")
     BigDecimal maxBalance;
 
     // Алгоритм Луна для проверки номеров карт
@@ -45,7 +44,7 @@ public class ValidationUtil {
         int sum = 0;
         boolean alternate = false;
 
-        for (int i = digitsOnly.length() - 1; i >= 0 ; i--) {
+        for (int i = digitsOnly.length() - 1; i >= 0; i--) {
             int digit = Character.getNumericValue(digitsOnly.charAt(i));
 
             if (alternate) {

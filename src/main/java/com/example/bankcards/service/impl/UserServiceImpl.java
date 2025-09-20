@@ -34,6 +34,21 @@ public class UserServiceImpl implements UserService {
     final UserMapper userMapper;
     final PasswordEncoder passwordEncoder;
 
+    // Вспомогательный метод для проверки прав администратора
+    private void checkAdminAccess() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            throw new AccessDeniedException("Admin access required");
+        }
+    }
+
     @Override
     public UserDTO getUserById(Long id) {
 
@@ -63,18 +78,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserDTO> getAllUsers() {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AccessDeniedException("Access denied");
-        }
-
-        // Только администратор может получать всех пользователей
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-
-        if (!isAdmin) {
-            throw new AccessDeniedException("Admin access required");
-        }
+        checkAdminAccess();
 
         List<User> users = userRepository.findAll();
         return userMapper.toUserDTOList(users);
@@ -112,7 +116,6 @@ public class UserServiceImpl implements UserService {
             User user = userRepository.findById(id)
                     .orElseThrow(() -> new NotFoundException("Пользователь не найден с id: " + id));
 
-            // Валидация роли
             validateRole(userUpdateDTO.getRole());
 
             // Обновляем только разрешенные поля
@@ -120,7 +123,6 @@ public class UserServiceImpl implements UserService {
             user.setLastName(userUpdateDTO.getLastName());
             user.setRole(userUpdateDTO.getRole());
 
-            // Обновляем статус активности, если передан
             if (userUpdateDTO.getEnabled() != null) {
                 user.setEnabled(userUpdateDTO.getEnabled());
             }
@@ -156,25 +158,36 @@ public class UserServiceImpl implements UserService {
             throw new ValidationException("Роль не может быть null");
         }
 
-        // Явная проверка допустимых значений роли
         if (role != Role.USER && role != Role.ADMIN) {
             throw new ValidationException("Неверная роль: " + role + ". Допустимые значения: USER, ADMIN");
         }
     }
 
-    // Добавьте этот метод для проверки прав администратора
-    private void checkAdminAccess() {
+    @Override
+    public Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AccessDeniedException("Access denied");
-        }
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        return user.getId();
+    }
 
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    @Override
+    public boolean isCurrentUserAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        return user.getRole() == Role.ADMIN;
+    }
 
-        if (!isAdmin) {
-            throw new AccessDeniedException("Admin access required");
-        }
+    @Override
+    public UserDTO getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        return userMapper.toUserDTO(user);
     }
 
 }

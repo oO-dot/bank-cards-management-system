@@ -14,6 +14,7 @@ import com.example.bankcards.util.MaskingUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +35,7 @@ public class BlockRequestServiceImpl implements BlockRequestService {
 
     @Override
     @Transactional
-    public BlockRequestDTO createBlockRequest(Long cardId, Long userId, String reason) {
+    public BlockRequestDTO createBlockRequest(Long userId, Long cardId, String reason) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new NotFoundException("Карта не найдена"));
 
@@ -73,7 +74,15 @@ public class BlockRequestServiceImpl implements BlockRequestService {
     }
 
     @Override
-    public List<BlockRequestDTO> getPendingRequests() {
+    public List<BlockRequestDTO> getPendingRequests(Long adminId) {
+        // Проверяем, что пользователь является администратором
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new NotFoundException("Пользователь не найден"));
+
+        if (admin.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Требуются права администратора");
+        }
+
         List<BlockRequest> requests = blockRequestRepository.findByStatus(BlockRequestStatus.PENDING);
         return requests.stream()
                 .map(this::convertToDto)
@@ -82,7 +91,7 @@ public class BlockRequestServiceImpl implements BlockRequestService {
 
     @Override
     @Transactional
-    public BlockRequestDTO approveRequest(Long requestId, Long adminId) {
+    public BlockRequestDTO approveRequest(Long adminId, Long requestId) {
         BlockRequest blockRequest = blockRequestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Запрос не найден"));
 
@@ -111,7 +120,7 @@ public class BlockRequestServiceImpl implements BlockRequestService {
 
     @Override
     @Transactional
-    public BlockRequestDTO rejectRequest(Long requestId, Long adminId, String rejectionReason) {
+    public BlockRequestDTO rejectRequest(Long adminId, Long requestId, String rejectionReason) {
         BlockRequest blockRequest = blockRequestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Запрос не найден"));
 
@@ -129,6 +138,7 @@ public class BlockRequestServiceImpl implements BlockRequestService {
         blockRequest.setStatus(BlockRequestStatus.REJECTED);
         blockRequest.setProcessedAt(LocalDateTime.now());
         blockRequest.setProcessedBy(admin);
+
         if (rejectionReason != null && !rejectionReason.trim().isEmpty()) {
             blockRequest.setReason(blockRequest.getReason() + " (Причина отклонения: " + rejectionReason + ")");
         }

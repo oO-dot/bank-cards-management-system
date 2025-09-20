@@ -4,9 +4,9 @@ services:
     image: postgres:13
     container_name: bankcards-postgres
     environment:
-      POSTGRES_DB: bank_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-bank_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
@@ -15,16 +15,16 @@ services:
       - bankcards-network
 
   app:
-    build: ./bank_rest  # Указываем путь к папке с Dockerfile
+    build: .
     container_name: bankcards-app
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bank_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      SPRING_LIQUIBASE_ENABLED: true
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-bank_db}
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-fLxS5pP8vJyA2dR9gUwXzB7qE4tH6nM1cK3rT0vY7iZ5lO8pQ2aS9dF4jU7nW0x}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-ThisIsA32ByteSecretKeyForAES256!}
     depends_on:
       - postgres
     networks:

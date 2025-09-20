@@ -52,7 +52,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: encrypted_number
-                  value: $2a$10$9kFMscqyN2mYd/Z1OyVqTuJPatYti/CyBb2ov0YIOUMgJ5t/D7xW6
+                  value: qA2jK9rNttsa8EPm1iWBIxL6tuRLo/PFlc7DhiCL9DE=
               - column:
                   name: owner
                   value: JOHN DOE
@@ -74,7 +74,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: encrypted_number
-                  value: $2a$10$9kFMscqyN2mYd/Z1OyVqTuJPatYti/CyBb2ov0YIOUMgJ5t/D7xW6
+                  value: qA2jK9rNttsa8EPm1iWBIxL6tuRLo/PFlc7DhiCL9DE=
               - column:
                   name: owner
                   value: JOHN DOE

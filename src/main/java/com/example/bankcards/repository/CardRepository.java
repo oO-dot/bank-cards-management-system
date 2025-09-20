@@ -11,5 +11,6 @@ import java.util.List;
 @Repository
 public interface CardRepository extends JpaRepository<Card, Long> {
     List<Card> findAllByUserId(Long userId); // Найти все карты пользователя по его ID
+
     Page<Card> findAllByUserId(Long userId, Pageable pageable); // Найти все карты пользователя с пагинацией
 }

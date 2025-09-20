@@ -5,9 +5,13 @@ import com.example.bankcards.dto.BlockRequestDTO;
 import java.util.List;
 
 public interface BlockRequestService {
-    BlockRequestDTO createBlockRequest(Long cardId, Long userId, String reason);
+    BlockRequestDTO createBlockRequest(Long userId, Long cardId, String reason);
+
     List<BlockRequestDTO> getUserBlockRequests(Long userId);
-    List<BlockRequestDTO> getPendingRequests();
-    BlockRequestDTO approveRequest(Long requestId, Long adminId);
-    BlockRequestDTO rejectRequest(Long requestId, Long adminId, String rejectionReason);
+
+    List<BlockRequestDTO> getPendingRequests(Long adminId);
+
+    BlockRequestDTO approveRequest(Long adminId, Long requestId);
+
+    BlockRequestDTO rejectRequest(Long adminId, Long requestId, String rejectionReason);
 }

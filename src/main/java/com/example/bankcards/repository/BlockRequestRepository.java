@@ -19,5 +19,6 @@ public interface BlockRequestRepository extends JpaRepository<BlockRequest, Long
     List<BlockRequest> findByUserId(Long userId);
 
     boolean existsByCardIdAndStatus(Long cardId, BlockRequestStatus status);
+
     Optional<BlockRequest> findByCardIdAndStatus(Long cardId, BlockRequestStatus status);
 }
