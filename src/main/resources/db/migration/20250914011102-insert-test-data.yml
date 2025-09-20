@@ -11,7 +11,7 @@ databaseChangeLog:
                   value: admin
               - column:
                   name: password
-                  value: $2a$10$XptfskLsT1l/bRTLRiiCgegj7JQ5VqFj/3nB3zBhR.5R.5rKzqK1a
+                  value: $2a$10$9kFMscqyN2mYd/Z1OyVqTuJPatYti/CyBb2ov0YIOUMgJ5t/D7xW6
               - column:
                   name: first_name
                   value: Admin
@@ -33,7 +33,7 @@ databaseChangeLog:
                   value: user1
               - column:
                   name: password
-                  value: $2a$10$XptfskLsT1l/bRTLRiiCgegj7JQ5VqFj/3nB3zBhR.5R.5rKzqK1a
+                  value: $2a$10$9kFMscqyN2mYd/Z1OyVqTuJPatYti/CyBb2ov0YIOUMgJ5t/D7xW6
               - column:
                   name: first_name
                   value: John
@@ -52,7 +52,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: encrypted_number
-                  value: U2FsdGVkX1+3sA6c7Z7Q1Wp7J6XkKj7Lm8N9O0P1Q2R3S4T5U6V7W8X9Y0Z
+                  value: qA2jK9rNttsa8EPm1iWBIxL6tuRLo/PFlc7DhiCL9DE=
               - column:
                   name: owner
                   value: JOHN DOE
@@ -74,7 +74,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: encrypted_number
-                  value: U2FsdGVkX1+4tB7d8C8R2Xp8K7YlLk8Mn9No0Pq1R2S3T4U5V6W7X8Y9Z0A
+                  value: qA2jK9rNttsa8EPm1iWBIxL6tuRLo/PFlc7DhiCL9DE=
               - column:
                   name: owner
                   value: JOHN DOE

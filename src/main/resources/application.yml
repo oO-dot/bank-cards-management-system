@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/bank_db
-    username: postgres
-    password: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/bank_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -22,29 +22,22 @@ spring:
     enabled: true
 
 encryption:
-  secret-key: ThisIsA32ByteSecretKeyForAES256! # Безопасность (PCI DSS). Если злоумышленник получит доступ к БД, он не увидит номера карт(маскировка).
+  secret-key: ${ENCRYPTION_KEY:ThisIsA32ByteSecretKeyForAES256!} # Безопасность (PCI DSS). Если злоумышленник получит доступ к БД, он не увидит номера карт(маскировка).
 
 validation:
   max-transfer-amount: 100000000
   max-balance: 1000000000
 
+jwt:
+  secret: "${JWT_SECRET:fLxS5pP8vJyA2dR9gUwXzB7qE4tH6nM1cK3rT0vY7iZ5lO8pQ2aS9dF4jU7nW0x}"
+  expiration: 86400000 # 24 hours in milliseconds
+
 logging:
   level:
-    com:
-      example:
-        bank:
-          cards: DEBUG
+    com.example.bankcards: DEBUG
+    org.springframework.security: DEBUG
 
 server:
   port: 8080
   servlet:
     context-path: /api # Общий endpoint для app.
-
-
-
-
-  #Что нужно сделать:
-  # + Указать настройки подключения к базе данных.
-  # + Указать порт приложения.
-  # - Настроить параметры безопасности и JWT.
-  # - Включить Swagger UI.

@@ -23,6 +23,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,14 +43,6 @@ public class CardServiceImpl implements CardService {
     final ValidationUtil validationUtil;
 
     @Override
-    public List<CardDTO> getUserCards(Long userId) {
-        checkUserAccess(userId);
-        return cardRepository.findAllByUserId(userId).stream()
-                .map(this::convertToDto)
-                .toList();
-    }
-
-    @Override
     public Page<CardDTO> getUserCards(Long userId, Pageable pageable) {
         checkUserAccess(userId);
         return cardRepository.findAllByUserId(userId, pageable)
@@ -57,18 +51,15 @@ public class CardServiceImpl implements CardService {
 
     @Override
     @Transactional
-    public void transferBetweenOwnCards(Long fromCardId, Long toCardId, BigDecimal amount) {
-
+    public void transferBetweenOwnCards(Long userId, Long fromCardId, Long toCardId, BigDecimal amount) {
         Card fromCard = cardRepository.findById(fromCardId)
                 .orElseThrow(() -> new NotFoundException("Карта отправителя не найдена с id: " + fromCardId));
-
-        User currentUser = fromCard.getUser();
 
         Card toCard = cardRepository.findById(toCardId)
                 .orElseThrow(() -> new NotFoundException("Карта получателя не найдена с id: " + toCardId));
 
-        if (!fromCard.getUser().getId().equals(toCard.getUser().getId()) ||
-                !toCard.getUser().getId().equals(currentUser.getId())) {
+        if (!fromCard.getUser().getId().equals(userId) ||
+                !toCard.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("Вы можете переводить только между своими картами");
         }
 
@@ -87,15 +78,17 @@ public class CardServiceImpl implements CardService {
 
         cardRepository.save(fromCard);
         cardRepository.save(toCard);
-
     }
 
     @Override
-    public BigDecimal getCardBalance(Long cardId) {
+    public BigDecimal getCardBalance(Long userId, Long cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new NotFoundException("Card not found"));
 
-        checkCardAccess(card);
+        if (!card.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("Можно просматривать баланс только своих карт");
+        }
+
         return card.getBalance();
     }
 
@@ -122,19 +115,17 @@ public class CardServiceImpl implements CardService {
     @Transactional
     public CardDTO createCard(CardRequestDTO cardRequestDTO) {
 
-        //checkAdminAccess();
+        checkAdminAccess();
 
         // Валидация номера карты
         validationUtil.validateCardNumber(cardRequestDTO.getNumber());
 
-        // Проверка существования пользователя
         User user = userRepository.findById(cardRequestDTO.getUserId())
                 .orElseThrow(() -> new NotFoundException("Пользователь не найден с id: " + cardRequestDTO.getUserId()));
 
         // Проверка срока действия карты
         validationUtil.validateExpirationDate(cardRequestDTO.getExpirationDate());
 
-        // Создание карты
         Card card = cardRequestMapper.toEntity(cardRequestDTO);
 
         card.setEncryptedNumber(encryptionUtil.encrypt(cardRequestDTO.getNumber()));
@@ -200,7 +191,6 @@ public class CardServiceImpl implements CardService {
      * Комбинированный подход: MapStruct для простых полей + ручная обработка для сложных
      */
     private CardDTO convertToDto(Card card) {
-        // Автоматический маппинг простых полей
         CardDTO dto = cardMapper.toCardDTO(card);
 
         // Ручная обработка номера карты: дешифровка + маскирование
@@ -210,43 +200,74 @@ public class CardServiceImpl implements CardService {
         return dto;
     }
 
-    private void checkUserAccess(Long userId) {
-        /*String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!currentUser.getRole().name().equals("ADMIN") && !currentUser.getId().equals(userId)) {
-            throw new AccessDeniedException("Access denied");
-        }
-         */
-        return;
-    }
-
     private void checkCardAccess(Card card) {
-       /* String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        if (!currentUser.getRole().name().equals("ADMIN") && !card.getUser().getId().equals(currentUser.getId())) {
+        if (!(principal instanceof UserDetails)) {
             throw new AccessDeniedException("Access denied");
         }
 
-        */
+        UserDetails userDetails = (UserDetails) principal;
 
-        return;
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            String currentUsername = userDetails.getUsername();
+            User currentUser = userRepository.findByUsername(currentUsername)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (!card.getUser().getId().equals(currentUser.getId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
     }
 
-    private void checkAdminAccess() {
-        /*String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    /**
+     * Проверяет доступ пользователя к данным другого пользователя
+     * Администратор имеет доступ ко всем данным
+     * Обычный пользователь - только к своим данным
+     */
+    private void checkUserAccess(Long userId) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        if (!currentUser.getRole().name().equals("ADMIN")) {
+        if (!(principal instanceof UserDetails)) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        UserDetails userDetails = (UserDetails) principal;
+
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            String currentUsername = userDetails.getUsername();
+            User currentUser = userRepository.findByUsername(currentUsername)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (!userId.equals(currentUser.getId())) {
+                throw new AccessDeniedException("Access denied");
+            }
+        }
+    }
+
+    /**
+     * Проверяет, является ли пользователь администратором
+     */
+    private void checkAdminAccess() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (!(principal instanceof UserDetails)) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        UserDetails userDetails = (UserDetails) principal;
+
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
             throw new AccessDeniedException("Admin access required");
         }
-
-         */
-
-        return;
     }
 }

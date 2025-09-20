@@ -4,6 +4,7 @@ import com.example.bankcards.dto.CardDTO;
 import com.example.bankcards.dto.CardRequestDTO;
 import com.example.bankcards.dto.TransferRequest;
 import com.example.bankcards.service.CardService;
+import com.example.bankcards.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 import com.example.bankcards.dto.BlockRequestDTO;
 import com.example.bankcards.service.BlockRequestService;
@@ -29,17 +31,15 @@ public class CardController {
 
     final CardService cardService;
     final BlockRequestService blockRequestService;
+    final UserService userService;
 
-    // Временное решение до настройки Security
-    private Long getCurrentUserId() {
-        return 3L;
-    }
+    // Методы для пользователя
 
     @GetMapping("/me")
     @Operation(summary = "Получить мои карты", description = "Возвращает список карт текущего пользователя")
     public ResponseEntity<Page<CardDTO>> getUserCards(Pageable pageable) {
 
-        Long userId = getCurrentUserId();
+        Long userId = userService.getCurrentUserId();
         Page<CardDTO> userCards = cardService.getUserCards(userId, pageable);
 
         return ResponseEntity.ok(userCards);
@@ -50,52 +50,34 @@ public class CardController {
     @Operation(summary = "Перевод между картами", description = "Перевод средств между своими картами")
     public ResponseEntity<Void> transferBetweenCards(@Valid @RequestBody TransferRequest transferRequest) {
 
-        cardService.transferBetweenOwnCards(
-                transferRequest.getFromCardId(),
-                transferRequest.getToCardId(),
-                transferRequest.getAmount()
-        );
+        Long userId = userService.getCurrentUserId();
 
-        return  ResponseEntity.ok().build();
+        cardService.transferBetweenOwnCards(userId, transferRequest.getFromCardId(),
+                transferRequest.getToCardId(), transferRequest.getAmount());
+
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{cardId}/balance")
     @Operation(summary = "Получить баланс карты", description = "Возвращает баланс конкретной карты")
     public ResponseEntity<BigDecimal> getCardBalance(@PathVariable Long cardId) {
 
-        BigDecimal balance = cardService.getCardBalance(cardId);
+        Long userId = userService.getCurrentUserId();
+        BigDecimal balance = cardService.getCardBalance(userId, cardId);
         return ResponseEntity.ok(balance);
-
-    }
-
-    @GetMapping
-    @Operation(summary = "Получить все карты", description = "Возвращает все карты в системе")
-    public ResponseEntity<Page<CardDTO>> getAllCards(Pageable pageable) {
-
-        Page<CardDTO> allCards  = cardService.getAllCards(pageable);
-        return ResponseEntity.ok(allCards);
 
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Получить карту по ID", description = "Возвращает карту по идентификатору")
     public ResponseEntity<CardDTO> getCardById(@PathVariable Long id) {
+
+        if (!userService.isCurrentUserAdmin()) {
+            throw new AccessDeniedException("Admin access required");
+        }
+
         CardDTO card = cardService.getCardById(id);
         return ResponseEntity.ok(card);
-    }
-
-    @PostMapping
-    @Operation(summary = "Создать карту", description = "Создает новую банковскую карту")
-    public ResponseEntity<CardDTO> createCard(@Valid @RequestBody CardRequestDTO cardRequestDTO) {
-        CardDTO createdCard = cardService.createCard(cardRequestDTO);
-        return ResponseEntity.ok(createdCard);
-    }
-
-    @PutMapping("/{id}/block")
-    @Operation(summary = "Заблокировать карту (админ)", description = "Блокирует карту")
-    public ResponseEntity<CardDTO> blockCard(@PathVariable Long id) {
-        CardDTO blockedCard = cardService.blockCard(id);
-        return ResponseEntity.ok(blockedCard);
     }
 
     @PostMapping("/{cardId}/block-request")
@@ -105,8 +87,8 @@ public class CardController {
             @PathVariable Long cardId,
             @RequestParam(required = false) String reason) {
 
-        Long userId = getCurrentUserId();
-        BlockRequestDTO request = blockRequestService.createBlockRequest(cardId, userId, reason);
+        Long userId = userService.getCurrentUserId();
+        BlockRequestDTO request = blockRequestService.createBlockRequest(userId, cardId, reason);
         return ResponseEntity.ok(request);
     }
 
@@ -114,14 +96,57 @@ public class CardController {
     @Operation(summary = "Получить мои запросы на блокировку",
             description = "Возвращает список запросов на блокировку текущего пользователя")
     public ResponseEntity<List<BlockRequestDTO>> getMyBlockRequests() {
-        Long userId = getCurrentUserId();
+        Long userId = userService.getCurrentUserId();
         List<BlockRequestDTO> requests = blockRequestService.getUserBlockRequests(userId);
         return ResponseEntity.ok(requests);
+    }
+
+
+    // Методы для администратора
+
+    @GetMapping
+    @Operation(summary = "Получить все карты", description = "Возвращает все карты в системе")
+    public ResponseEntity<Page<CardDTO>> getAllCards(Pageable pageable) {
+
+        Page<CardDTO> allCards = cardService.getAllCards(pageable);
+        return ResponseEntity.ok(allCards);
+
+    }
+
+    @PostMapping
+    @Operation(summary = "Создать карту", description = "Создает новую банковскую карту")
+    public ResponseEntity<CardDTO> createCard(@Valid @RequestBody CardRequestDTO cardRequestDTO) {
+
+        // Проверяем права администратора через userService
+        if (!userService.isCurrentUserAdmin()) {
+            throw new AccessDeniedException("Admin access required");
+        }
+
+        CardDTO createdCard = cardService.createCard(cardRequestDTO);
+        return ResponseEntity.ok(createdCard);
+    }
+
+    @PutMapping("/{id}/block")
+    @Operation(summary = "Заблокировать карту (админ)", description = "Блокирует карту")
+    public ResponseEntity<CardDTO> blockCard(@PathVariable Long id) {
+
+        if (!userService.isCurrentUserAdmin()) {
+            throw new AccessDeniedException("Admin access required");
+        }
+
+        CardDTO blockedCard = cardService.blockCard(id);
+        return ResponseEntity.ok(blockedCard);
     }
 
     @PutMapping("/{id}/activate")
     @Operation(summary = "Активировать карту", description = "Активирует заблокированную карту")
     public ResponseEntity<CardDTO> activateCard(@PathVariable Long id) {
+
+        // Проверяем права администратора через userService
+        if (!userService.isCurrentUserAdmin()) {
+            throw new AccessDeniedException("Admin access required");
+        }
+
         CardDTO activatedCard = cardService.activateCard(id);
         return ResponseEntity.ok(activatedCard);
     }
@@ -129,6 +154,11 @@ public class CardController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Удалить карту", description = "Удаляет карту")
     public ResponseEntity<Void> deleteCard(@PathVariable Long id) {
+
+        if (!userService.isCurrentUserAdmin()) {
+            throw new AccessDeniedException("Admin access required");
+        }
+
         cardService.deleteCard(id);
         return ResponseEntity.ok().build();
     }

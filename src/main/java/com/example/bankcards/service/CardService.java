@@ -10,16 +10,22 @@ import java.util.List;
 
 public interface CardService {
     // Для пользователя
-    List<CardDTO> getUserCards(Long userId);
     Page<CardDTO> getUserCards(Long userId, Pageable pageable); // С пагинацией
-    void transferBetweenOwnCards(Long fromCardId, Long toCardId, BigDecimal amount);
-    BigDecimal getCardBalance(Long cardId);
+
+    void transferBetweenOwnCards(Long userId, Long fromCardId, Long toCardId, BigDecimal amount);
+
+    BigDecimal getCardBalance(Long userId, Long cardId);
 
     // Для администратора
     CardDTO getCardById(Long id);
+
     Page<CardDTO> getAllCards(Pageable pageable); // Все карты с пагинацией
+
     CardDTO createCard(CardRequestDTO cardRequestDTO);
+
     CardDTO blockCard(Long cardId);
+
     CardDTO activateCard(Long cardId);
+
     void deleteCard(Long cardId);
 }
