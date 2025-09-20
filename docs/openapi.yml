@@ -1,0 +1,6 @@
+# Здесь будет OpenAPI описание всех доступных эндпоинтов и моделей данных.
+# Актуальная спецификация автоматически генерируется приложением Spring Boot
+# и доступна по следующим URL:
+
+# JSON: http://localhost:8080/api/v3/api-docs
+# Swagger UI: http://localhost:8080/api/swagger-ui/index.html
