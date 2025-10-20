@@ -37,7 +37,23 @@ logging:
     com.example.bankcards: DEBUG
     org.springframework.security: DEBUG
 
+
 server:
   port: 8080
   servlet:
     context-path: /api # Общий endpoint для app.
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,beans
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true

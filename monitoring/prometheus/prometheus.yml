@@ -1,0 +1,31 @@
+# Prometheus configuration for Local Development on Windows
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Мониторинг самого Prometheus
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+    labels:
+      environment: "development"
+
+  # Spring Boot приложение (локальная разработка на Windows)
+  - job_name: "bankcards-app-dev"
+    metrics_path: "/api/actuator/prometheus"
+    static_configs:
+      - targets: ["localhost:8080"]
+    scrape_interval: 10s
+    labels:
+      environment: "development"
+      os: "windows"
+
+  # Windows Exporter (локальная разработка)
+  #- job_name: "windows-exporter-dev"
+  #  static_configs:
+  #    - targets: ["localhost:9182"]
+  #  labels:
+  #    environment: "development"
+  #    os: "windows"
