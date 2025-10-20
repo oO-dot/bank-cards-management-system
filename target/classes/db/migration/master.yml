@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/migration/20250914011100-create-users-table.yml
+  - include:
+      file: db/migration/20250914011101-create-cards-table.yml
+  - include:
+      file: db/migration/20250914011102-insert-test-data.yml
+  - include:
+      file: db/migration/20250918000000-create-block-requests-table.yml
